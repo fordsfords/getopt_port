@@ -24,10 +24,16 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * Updated by Steve Ford <fordsfords@gmail.com> to be all-inclusive in the
+ * include file. No ".c" file needed. Requires adding GETOPT_PORT above
+ * your "main()".
+ *
  ******************************************************************************/
 
 #ifndef INCLUDED_GETOPT_PORT_H
 #define INCLUDED_GETOPT_PORT_H
+
+#include <string.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -51,6 +57,81 @@ int getopt(int argc, char* const argv[], const char* optstring);
 
 int getopt_long(int argc, char* const argv[],
   const char* optstring, const struct option* longopts, int* longindex);
+
+
+#define GETOPT_PORT \
+char* optarg; \
+int optopt; \
+int optind = 1; \
+int opterr; \
+ \
+static char* optcursor = NULL; \
+ \
+int getopt(int argc, char* const argv[], const char* optstring) { \
+  int optchar = -1; \
+  const char* optdecl = NULL; \
+ \
+  optarg = NULL; \
+  opterr = 0; \
+  optopt = 0; \
+ \
+  if (optind >= argc) \
+    goto no_more_optchars; \
+ \
+  if (argv[optind] == NULL) \
+    goto no_more_optchars; \
+ \
+  if (*argv[optind] != '-') \
+    goto no_more_optchars; \
+ \
+  if (strcmp(argv[optind], "-") == 0) \
+    goto no_more_optchars; \
+ \
+  if (strcmp(argv[optind], "--") == 0) { \
+    ++optind; \
+    goto no_more_optchars; \
+  } \
+ \
+  if (optcursor == NULL || *optcursor == '\0') \
+    optcursor = argv[optind] + 1; \
+ \
+  optchar = *optcursor; \
+ \
+  optopt = optchar; \
+ \
+  optdecl = strchr(optstring, optchar); \
+  if (optdecl) { \
+    if (optdecl[1] == ':') { \
+      optarg = ++optcursor; \
+      if (*optarg == '\0') { \
+        if (optdecl[2] != ':') { \
+          if (++optind < argc) { \
+            optarg = argv[optind]; \
+          } else { \
+            optarg = NULL; \
+            optchar = (optstring[0] == ':') ? ':' : '?'; \
+          } \
+        } else { \
+          optarg = NULL; \
+        } \
+      } \
+ \
+      optcursor = NULL; \
+    } \
+  } else { \
+    optchar = '?'; \
+  } \
+ \
+  if (optcursor == NULL || *++optcursor == '\0') \
+    ++optind; \
+ \
+  return optchar; \
+ \
+no_more_optchars: \
+  optcursor = NULL; \
+  return -1; \
+} \
+
 
 #if defined(__cplusplus)
 }
